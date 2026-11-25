@@ -28,8 +28,8 @@ BANNED_PHRASES = (
 )
 
 
-def validate(text: str) -> None:
-    """Enforce the kit's gate and the judge brief's format rules."""
+def _check_type_and_length(text: str) -> None:
+    """Stage 1: the entry must be a non-empty string within the gate."""
     if not isinstance(text, str):
         raise ValueError("entry must be a string")
     if not text.strip():
@@ -38,15 +38,53 @@ def validate(text: str) -> None:
         raise ValueError(
             f"entry must be 1-279 characters, got {len(text)}"
         )
+
+
+def _check_single_line(text: str) -> None:
+    """Stage 2: the review is a single line — no line breaks allowed."""
     if "\n" in text or "\r" in text:
         raise ValueError("entry must be a single line")
+    if text != text.strip():
+        raise ValueError("entry must not start or end with white space")
+
+
+def _check_banned_phrases(text: str) -> None:
+    """Stage 3: reject the stock phrases the judge's brief penalises."""
     lowered = text.lower()
     for phrase in BANNED_PHRASES:
         if phrase in lowered:
             raise ValueError(f"entry contains banned stock phrase: {phrase!r}")
-    # It must read as a one-star review: the star rating is present.
+
+
+def _check_rating_present(text: str) -> None:
+    """Stage 4: it must read as a one-star review — the star is present."""
     if "\u2605" not in text:
         raise ValueError("entry must carry its one-star rating")
+    if text.count("\u2605") != 1:
+        raise ValueError("entry must carry exactly one filled star")
+
+
+def _check_voice_and_punctuation(text: str) -> None:
+    """Stage 5 (new): the plant's voice and sentence shape must hold.
+
+    The review is written in the first person, ends with terminal
+    punctuation, and has no doubled spaces from sloppy joining.
+    """
+    if " I " not in text and not text.startswith("I "):
+        raise ValueError("entry must be written in the plant's first person")
+    if text[-1] not in ".!?":
+        raise ValueError("entry must end with terminal punctuation")
+    if "  " in text:
+        raise ValueError("entry must not contain doubled spaces")
+
+
+def validate(text: str) -> None:
+    """Enforce the kit's gate and the judge brief's format rules."""
+    _check_type_and_length(text)
+    _check_single_line(text)
+    _check_banned_phrases(text)
+    _check_rating_present(text)
+    _check_voice_and_punctuation(text)
 
 
 def main() -> None:
